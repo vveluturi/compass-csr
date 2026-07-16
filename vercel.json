@@ -1,8 +1,20 @@
 {
+  "version": 2,
   "buildCommand": "cd compass-csr && npm install && npm run build",
   "outputDirectory": "compass-csr/dist",
-  "rewrites": [
-    { "source": "/api/anthropic/v1/messages", "destination": "/api/anthropic" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  "functions": {
+    "api/anthropic.js": {
+      "runtime": "@vercel/node@3"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/anthropic",
+      "dest": "/api/anthropic.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
