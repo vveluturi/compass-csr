@@ -287,7 +287,7 @@ ${JSON.stringify(payload, null, 2)}
 
 Return ONLY the JSON blueprint object. No explanation, no markdown, no backticks.`;
 
-      const response = await fetch("/api/anthropic/v1/messages", {
+      const response = await fetch("/api/anthropic", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
