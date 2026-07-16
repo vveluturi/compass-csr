@@ -9,7 +9,7 @@ import { useNavigate } from "react-router";
 import { PROGRAM_STATUS_STYLES } from "../types/program";
 import { formatProgramDate } from "../lib/blueprint-data";
 import { loadConnected } from "../lib/nonprofits-data";
-import { useCompanyName } from "../lib/settings";
+import { useAuth } from "../context/auth-context";
 import { loadTeamMembers } from "../lib/team";
 import { NameAvatar } from "../components/member-avatar";
 import {
@@ -127,7 +127,8 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [connectedCount] = useState(() => loadConnected().length);
   const [teamCount] = useState(() => loadTeamMembers().length);
-  const companyName = useCompanyName();
+  const { company } = useAuth();
+  const companyName = company?.name?.trim() || "Your Company";
   const role = getUserRole();
 
   const activePrograms = programs.filter((p) => p.status !== "Archived");
@@ -214,10 +215,27 @@ export function Dashboard() {
               <Sparkles className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <CardTitle className="text-2xl mb-2">Welcome back, {companyName}</CardTitle>
-              <CardDescription className="text-base text-muted-foreground">
-                Your CSR program is taking shape. Let's make an impact together.
-              </CardDescription>
+              {programs.length === 0 ? (
+                <>
+                  <CardTitle className="text-2xl mb-2">Welcome to Compass CSR</CardTitle>
+                  <CardDescription className="text-base text-muted-foreground mb-4">
+                    Let's build your first CSR program. It only takes a few minutes to get started.
+                  </CardDescription>
+                  {role === "Admin" && (
+                    <Button size="lg" className="bg-primary hover:bg-primary/90" onClick={handleNewProgram}>
+                      <Sparkles className="h-5 w-5 mr-2" />
+                      Start a New Program
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <CardTitle className="text-2xl mb-2">Welcome back, {companyName}</CardTitle>
+                  <CardDescription className="text-base text-muted-foreground">
+                    Your CSR program is taking shape. Let's make an impact together.
+                  </CardDescription>
+                </>
+              )}
             </div>
           </div>
         </CardHeader>

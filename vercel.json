@@ -1,1 +1,7 @@
-{"outputDirectory":"compass-csr/dist","buildCommand":"cd compass-csr && npm install && npm run build"}
+{
+  "outputDirectory": "compass-csr/dist",
+  "buildCommand": "cd compass-csr && npm install && npm run build",
+  "rewrites": [
+    { "source": "/api/anthropic/(.*)", "destination": "/api/anthropic" }
+  ]
+}
