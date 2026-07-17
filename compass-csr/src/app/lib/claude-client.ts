@@ -1,7 +1,13 @@
-// Thin wrapper around the Anthropic Messages API, proxied through Vite's dev
-// server (see vite.config.ts) so the API key never reaches the browser bundle.
+// Thin wrapper around the Anthropic Messages API. In dev this hits Vite's
+// proxy (see vite.config.ts); in production it hits the /api/anthropic
+// serverless function (api/anthropic.js) — either way the key stays server-side.
+// Must match the route the function is actually deployed at: a file at
+// api/anthropic.js is served at exactly "/api/anthropic", not
+// "/api/anthropic/v1/messages" (that nested path doesn't exist as a
+// function in production and silently falls through to the SPA's
+// catch-all rewrite, returning index.html instead of an API response).
 export async function callClaude(system: string, userMessage: string, maxTokens: number): Promise<string> {
-  const response = await fetch("/api/anthropic/v1/messages", {
+  const response = await fetch("/api/anthropic", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -14,7 +20,11 @@ export async function callClaude(system: string, userMessage: string, maxTokens:
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData?.error?.message ?? `API error: ${response.status}`);
+    // errorData.error can be a plain string (our own serverless function's
+    // error shape) or an object with a .message (Anthropic's API error shape)
+    const message =
+      typeof errorData?.error === "string" ? errorData.error : errorData?.error?.message;
+    throw new Error(message ?? `API error: ${response.status}`);
   }
 
   const data = await response.json();

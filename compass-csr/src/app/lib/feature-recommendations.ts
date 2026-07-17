@@ -86,7 +86,7 @@ const RECOMMENDATION_DEFS: (FeatureRecommendation & { matches: (step3: Step3Data
   {
     feature: "nonprofit-partners",
     title: "Connect with nonprofit partners",
-    desc: "Browse verified nonprofits that match your CSR program focus and express interest in partnerships.",
+    desc: "Browse verified nonprofits that match your CSR program focus and send them a partnership email.",
     link: "/nonprofit-partners",
     icon: "Heart",
     dismissKey: DISMISS_KEYS["nonprofit-partners"],

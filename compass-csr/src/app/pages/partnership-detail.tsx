@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Check,
   Send,
+  Mail,
   Award,
   Sparkles,
   Copy,
@@ -504,7 +505,9 @@ Generate the checklist now.`;
       }));
       mergeIntoRecord({ checklist: { generatedAt: new Date().toISOString(), items: checklistItems } });
     } catch (err) {
-      setChecklistError(err instanceof Error ? err.message : "Failed to generate checklist.");
+      const message = err instanceof Error ? err.message : "Failed to generate checklist.";
+      setChecklistError(message);
+      toast.error(`Couldn't generate checklist: ${message}`);
     } finally {
       setGeneratingChecklist(false);
     }
@@ -587,7 +590,9 @@ The email should introduce the company, explain why we're interested in partneri
       const text = await callClaude(system, user, 1000);
       mergeIntoRecord({ emailDraft: text });
     } catch (err) {
-      setEmailError(err instanceof Error ? err.message : "Failed to generate email draft.");
+      const message = err instanceof Error ? err.message : "Failed to generate email draft.";
+      setEmailError(message);
+      toast.error(`Couldn't generate email draft: ${message}`);
     } finally {
       setGeneratingEmail(false);
     }
@@ -634,9 +639,14 @@ The email should introduce the company, explain why we're interested in partneri
     const updatedStatus: PartnershipStatus = wasExploring ? "Contacted" : record.status;
     persistRecord({ ...record, status: updatedStatus, updatedAt: new Date().toISOString(), interest });
 
-    toast.success(
-      "Interest expressed — copy the email draft above and send it to the nonprofit's partnerships team.",
-    );
+    if (record.emailDraft) {
+      handleSendEmail();
+      toast.success("Interest logged — opening your mail app with the pre-drafted email…");
+    } else {
+      toast.success(
+        'Interest logged — generate an email draft above, then click "Send Partnership Email" again to open it in your mail app.',
+      );
+    }
     setContactName("");
     setEmail("");
     setMessage("");
@@ -737,7 +747,7 @@ The email should introduce the company, explain why we're interested in partneri
               </span>
             ) : record.status === "Exploring" ? (
               <p className="text-xs text-muted-foreground text-center">
-                Submit the Express Interest form below to start this partnership.
+                Use the form below to send a partnership email and start this partnership.
               </p>
             ) : record.status === "In Discussion" ? (
               <>
@@ -881,11 +891,11 @@ The email should introduce the company, explain why we're interested in partneri
         </Card>
       )}
 
-      {/* Express Interest (pre-active-partner) */}
+      {/* Reach out / send partnership email (pre-active-partner) */}
       {record.status !== "Active Partner" && (
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Express Interest</CardTitle>
+            <CardTitle className="text-base">Reach Out to This Nonprofit</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* AI email draft */}
@@ -986,17 +996,28 @@ The email should introduce the company, explain why we're interested in partneri
                     className="min-h-28"
                   />
                 </div>
-                <Button type="submit" className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <Send className="h-4 w-4" /> Express Interest
-                </Button>
+                <div className="space-y-1.5">
+                  <Button
+                    type="submit"
+                    className="gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    title="Opens a pre-drafted email in your mail app"
+                  >
+                    <Mail className="h-4 w-4" /> Send Partnership Email
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Opens a pre-drafted email in your mail app and logs your interest with {nonprofit.name}.
+                  </p>
+                </div>
               </form>
 
               {record.interest && (
                 <div className="mt-6 pt-6 border-t border-border space-y-4">
                   <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                     <p className="text-sm text-foreground">
-                      📋 Next step: Copy the email above and send it from your own email to the nonprofit's
-                      partnerships team.
+                      📋{" "}
+                      {record.emailDraft
+                        ? "We've opened your mail app with the pre-drafted email — review it and hit send."
+                        : 'Generate an email draft above, then use "Send Partnership Email" to open it in your mail app.'}
                     </p>
                   </div>
                   <div>
@@ -1004,8 +1025,8 @@ The email should introduce the company, explain why we're interested in partneri
                       Last Submitted
                     </p>
                     <p className="text-sm text-foreground">
-                      {record.interest.contactName} ({record.interest.email}) expressed interest in{" "}
-                      <strong>{record.interest.partnershipType}</strong> on{" "}
+                      {record.interest.contactName} ({record.interest.email}) reached out about{" "}
+                      <strong>{record.interest.partnershipType}</strong> partnership on{" "}
                       {formatProgramDate(record.interest.submittedAt)}.
                     </p>
                   </div>

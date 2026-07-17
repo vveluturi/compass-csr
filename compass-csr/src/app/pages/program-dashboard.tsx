@@ -240,25 +240,46 @@ function NotFound() {
   );
 }
 
-// ─── AI suggestions derived from blueprint (unchanged) ────────────────────────
+// ─── AI suggestions derived from blueprint ─────────────────────────────────────
 
-function getAISuggestions(programTypes: string[]) {
+interface AISuggestion {
+  icon: React.ElementType;
+  title: string;
+  desc: string;
+  detail: string;
+  ctaLabel: string;
+  ctaTo: string;
+}
+
+function getAISuggestions(programTypes: string[]): AISuggestion[] {
   const icons = [Heart, Users, Sparkles];
-  const defaults = [
+  const defaults: AISuggestion[] = [
     {
       icon: Heart,
       title: "Add a third nonprofit partner",
       desc: "Diversifying your nonprofit partnerships increases employee engagement and community reach.",
+      detail:
+        "Programs with three or more nonprofit partners tend to see broader employee participation — different causes resonate with different people on your team. Look for an organization that complements the causes you're already supporting rather than overlapping with them, so your program covers more ground. Browse the directory, filter by cause area, and connect with one or two that stand out — most nonprofits respond to outreach within a few business days.",
+      ctaLabel: "Browse Nonprofit Partners →",
+      ctaTo: "/nonprofit-partners",
     },
     {
       icon: Users,
       title: "Launch a peer-to-peer fundraising campaign",
       desc: "Teams that add employee-led fundraising see 2.4× more engagement in months 2 and 3.",
+      detail:
+        "Peer-to-peer campaigns turn your employees into advocates: each person sets a personal fundraising goal and rallies their own network, which multiplies your program's reach well beyond the company. Start small — pick one nonprofit partner, set a company-wide target, and give employees a simple way to share their progress. A short kickoff announcement in your Weekly Digest is usually enough to get the first wave of participants signed up.",
+      ctaLabel: "Set Up Weekly Digest →",
+      ctaTo: "/weekly-digest",
     },
     {
       icon: Sparkles,
       title: "Set up your ESG reporting dashboard",
       desc: "You're collecting data that qualifies for GRI standards. Start tracking now for your first impact report.",
+      detail:
+        "The volunteer hours, dollars donated, and partnership activity you're already logging in Compass map directly onto common ESG frameworks like GRI. Rather than reconstructing this data later, keep logging activity as it happens on each nonprofit partner's page — your Impact Report compiles it automatically into a shareable summary whenever leadership asks for an update.",
+      ctaLabel: "View Impact Report →",
+      ctaTo: "/impact-report",
     },
   ];
 
@@ -267,6 +288,10 @@ function getAISuggestions(programTypes: string[]) {
       icon: Heart,
       title: "Partner with an environmental nonprofit",
       desc: "Given your sustainability focus, connecting with a conservation org would strengthen your program's credibility.",
+      detail:
+        "Since sustainability is part of your program's core focus, pairing it with a dedicated environmental nonprofit gives your CSR story a concrete, verifiable anchor — something leadership and employees can point to beyond internal initiatives. Look for organizations working on conservation, climate, or environmental education in the communities where you operate. A single well-matched partnership here often does more for credibility than several loosely related ones.",
+      ctaLabel: "Browse Nonprofit Partners →",
+      ctaTo: "/nonprofit-partners",
     };
   }
   if (programTypes.includes("Employee Volunteering")) {
@@ -274,6 +299,10 @@ function getAISuggestions(programTypes: string[]) {
       icon: Users,
       title: "Create a volunteer leaderboard",
       desc: "Friendly competition drives participation — teams with leaderboards log 3× more volunteer hours.",
+      detail:
+        "A simple leaderboard — tracking volunteer hours by team or individual — turns participation into something visible and a little competitive, which reliably drives more sign-ups than an open-ended ask. Log hours through each nonprofit partner's Activity Log as they happen, then share standings in your Weekly Digest so momentum builds naturally instead of requiring a big one-time push.",
+      ctaLabel: "Set Up Weekly Digest →",
+      ctaTo: "/weekly-digest",
     };
   }
 
@@ -480,6 +509,45 @@ function SuggestTaskModal({
             Submit
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Learn More modal (Expand Your Program suggestions) ───────────────────────
+
+function LearnMoreDialog({
+  suggestion,
+  onOpenChange,
+}: {
+  suggestion: AISuggestion | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={!!suggestion} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        {suggestion && (
+          <>
+            <DialogHeader>
+              <div className="p-2 bg-primary/10 rounded-md w-fit mb-1">
+                <suggestion.icon className="h-5 w-5 text-primary" />
+              </div>
+              <DialogTitle>{suggestion.title}</DialogTitle>
+              <DialogDescription>{suggestion.desc}</DialogDescription>
+            </DialogHeader>
+            <p className="text-sm text-foreground leading-relaxed">{suggestion.detail}</p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+              <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Link to={suggestion.ctaTo} onClick={() => onOpenChange(false)}>
+                  {suggestion.ctaLabel}
+                </Link>
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -931,6 +999,7 @@ export function ProgramDashboard() {
   const [suggestModalOpen, setSuggestModalOpen] = useState(false);
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<TaskSuggestion[]>(() => loadSuggestions());
+  const [learnMoreSuggestion, setLearnMoreSuggestion] = useState<AISuggestion | null>(null);
 
   // Refresh tasks whenever the underlying program changes (e.g. navigating between programs)
   useEffect(() => {
@@ -1440,22 +1509,29 @@ export function ProgramDashboard() {
             <span className="text-xs text-muted-foreground">— AI-suggested next steps</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {aiSuggestions.map(({ icon: Icon, title, desc }) => (
-              <Card key={title} className="border-border shadow-sm hover:border-primary/30 transition-colors group">
-                <CardContent className="pt-5 space-y-3">
-                  <div className="p-2 bg-primary/10 rounded-md w-fit">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground mb-1">{title}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
-                  </div>
-                  <button className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
-                    Learn more <ArrowUpRight className="h-3.5 w-3.5" />
-                  </button>
-                </CardContent>
-              </Card>
-            ))}
+            {aiSuggestions.map((suggestion) => {
+              const Icon = suggestion.icon;
+              return (
+                <Card key={suggestion.title} className="border-border shadow-sm hover:border-primary/30 transition-colors group">
+                  <CardContent className="pt-5 space-y-3">
+                    <div className="p-2 bg-primary/10 rounded-md w-fit">
+                      <Icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground mb-1">{suggestion.title}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{suggestion.desc}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLearnMoreSuggestion(suggestion)}
+                      className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
+                    >
+                      Learn more <ArrowUpRight className="h-3.5 w-3.5" />
+                    </button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
 
@@ -1471,6 +1547,10 @@ export function ProgramDashboard() {
       </div>
 
       <SuggestTaskModal open={suggestModalOpen} onOpenChange={setSuggestModalOpen} onSubmit={handleSubmitSuggestion} />
+      <LearnMoreDialog
+        suggestion={learnMoreSuggestion}
+        onOpenChange={(open) => !open && setLearnMoreSuggestion(null)}
+      />
       <ReviewSuggestionsDialog
         open={reviewPanelOpen}
         onOpenChange={setReviewPanelOpen}

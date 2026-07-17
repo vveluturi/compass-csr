@@ -25,7 +25,7 @@ import {
   saveConnected,
   type Nonprofit,
 } from "../lib/nonprofits-data";
-import { loadPartnerships, partnershipKey, resolveCompanyName } from "../lib/partnership-status";
+import { loadPartnerships } from "../lib/partnership-status";
 import { shouldShowFeatureBanner, dismissRecommendation, DISMISS_KEYS } from "../lib/feature-recommendations";
 
 // ─── Nonprofit Card ───────────────────────────────────────────────────────────
@@ -166,18 +166,26 @@ export function NonprofitPartners() {
     return [...new Set(suggested)].slice(0, 3);
   }, [programs]);
 
-  // Nonprofits that have reached "Active Partner" status for the current company
+  // Nonprofits that have reached "Active Partner" status. Matches directly by
+  // nonprofit name across every stored partnership record (same approach as
+  // impact-report.tsx's resolvePartnerships) rather than rebuilding a single
+  // partnershipKey off resolveCompanyName(programs) — that resolves to
+  // whichever program was created most recently, which can silently drift
+  // from the company name a partnership was actually recorded under and
+  // orphan the lookup key whenever more than one program exists.
   const activePartnerIds = useMemo(() => {
-    const companyName = resolveCompanyName(programs);
     const all = loadPartnerships();
+    const activeNames = new Set(
+      Object.entries(all)
+        .filter(([, record]) => record.status === "Active Partner")
+        .map(([key, record]) => (record.nonprofitName ?? key.split("::")[1] ?? "").toLowerCase()),
+    );
     const ids = new Set<string>();
     for (const n of NONPROFITS) {
-      if (all[partnershipKey(companyName, n.name)]?.status === "Active Partner") {
-        ids.add(n.id);
-      }
+      if (activeNames.has(n.name.toLowerCase())) ids.add(n.id);
     }
     return ids;
-  }, [programs]);
+  }, []);
 
   const activePartnerNonprofits = useMemo(
     () => NONPROFITS.filter((n) => activePartnerIds.has(n.id)),
