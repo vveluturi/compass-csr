@@ -266,6 +266,15 @@ export function Settings() {
     persistSettings({ ...current, account });
     showToast("Account info saved ✓");
   };
+
+  const handleResetOnboarding = () => {
+    try {
+      localStorage.removeItem("compass_onboarding_v1");
+    } catch {
+      // fail silently
+    }
+    showToast("Onboarding reset — refresh to see it again");
+  };
  
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -519,8 +528,19 @@ export function Settings() {
             </div>
           </div>
         </div>
+
+        {/* Reset onboarding tour */}
+        <div className="border-t pt-4">
+          <button
+            type="button"
+            onClick={handleResetOnboarding}
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Reset onboarding tour
+          </button>
+        </div>
       </Section>
- 
+
       {/* ── Danger Zone ── */}
       <Card className="border-destructive/30">
         <CardContent className="p-5">

@@ -14,6 +14,7 @@ import { ProgramBlueprint } from "./pages/program-blueprint";
 import { ProgramDashboard } from "./pages/program-dashboard";
 import { MyPrograms } from "./pages/my-programs";
 import { MyTasks } from "./pages/my-tasks";
+import { TeamInbox } from "./pages/team-inbox";
 import { NonprofitPartners } from "./pages/nonprofit-partners";
 import { PartnershipDetail } from "./pages/partnership-detail";
 import { ImpactReport } from "./pages/impact-report";
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
       { path: "programs/:id/blueprint", Component: ProgramBlueprint },
       { path: "my-programs", Component: MyPrograms },
       { path: "my-tasks", Component: MyTasks },
+      { path: "team-inbox", Component: TeamInbox },
       { path: "nonprofit-partners", Component: NonprofitPartners },
       { path: "partnerships/:nonprofitName", Component: PartnershipDetail },
       { path: "impact-report", Component: ImpactReport },

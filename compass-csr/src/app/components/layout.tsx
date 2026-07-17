@@ -12,6 +12,7 @@ import {
   ClipboardList,
   CalendarRange,
   LogOut,
+  Mail,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import {
@@ -24,12 +25,14 @@ import {
 } from "./ui/dropdown-menu";
 import { initials } from "../lib/team";
 import { useAuth } from "../context/auth-context";
+import { useUnreadFeedbackCount } from "../lib/feedback";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/new-program", label: "New Program", icon: PlusCircle },
   { path: "/my-programs", label: "My Programs", icon: FolderKanban },
   { path: "/my-tasks", label: "My Tasks", icon: ClipboardList },
+  { path: "/team-inbox", label: "Inbox", icon: Mail },
   { path: "/weekly-digest", label: "Weekly Digest", icon: CalendarRange },
   { path: "/nonprofit-partners", label: "Nonprofit Partners", icon: Heart },
   { path: "/impact-report", label: "Impact Report", icon: FileBarChart },
@@ -56,6 +59,7 @@ export function Layout() {
   const companyName = company?.name?.trim() || "Your Company";
   const displayName = userProfile?.full_name?.trim() || user?.email || "Account";
   const [role, setRole] = useState<UserRole>(getUserRole);
+  const unreadFeedbackCount = useUnreadFeedbackCount();
 
   useEffect(() => {
     function handleUpdate() {
@@ -91,21 +95,26 @@ export function Layout() {
           {visibleNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
-            
+
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
-                  ${isActive 
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                  ${isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
                   }
                 `}
               >
                 <Icon className="h-5 w-5" />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.path === "/team-inbox" && unreadFeedbackCount > 0 && (
+                  <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-rose-500 text-white text-xs font-semibold">
+                    {unreadFeedbackCount}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -15,6 +15,9 @@ import {
   UserRound,
   Lightbulb,
   X,
+  MessageSquare,
+  HelpCircle,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -58,6 +61,19 @@ import {
   type TaskState,
   type TaskStatus,
 } from "../lib/tasks";
+import {
+  loadFeedback,
+  addFeedback,
+  replyToFeedback,
+  resolveFeedback,
+  FEEDBACK_TYPE_STYLES,
+  FEEDBACK_TYPE_LABELS,
+  FEEDBACK_TYPE_PLACEHOLDERS,
+  FEEDBACK_STATUS_STYLES,
+  FEEDBACK_STATUS_LABELS,
+  type FeedbackItem,
+  type FeedbackType,
+} from "../lib/feedback";
 
 // ─── Role ─────────────────────────────────────────────────────────────────────
 
@@ -663,6 +679,241 @@ function TeamTasksTab({ tasks, onUpdate }: { tasks: TaskState[]; onUpdate: (task
   );
 }
 
+// ─── Feedback tab ──────────────────────────────────────────────────────────────
+
+const FEEDBACK_TYPE_ICONS: Record<FeedbackType, React.ElementType> = {
+  question: HelpCircle,
+  suggestion: Lightbulb,
+  feedback: MessageCircle,
+};
+
+function SubmitFeedbackForm({
+  onSubmit,
+}: {
+  onSubmit: (fields: { type: FeedbackType; message: string; submittedBy: string }) => void;
+}) {
+  const [type, setType] = useState<FeedbackType>("question");
+  const [message, setMessage] = useState("");
+  const [submittedBy, setSubmittedBy] = useState(() => loadCurrentUser() ?? "");
+
+  function handleSubmit() {
+    if (!message.trim() || !submittedBy.trim()) return;
+    onSubmit({ type, message: message.trim(), submittedBy: submittedBy.trim() });
+    setMessage("");
+  }
+
+  return (
+    <Card className="border-border shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Submit Feedback</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {(Object.keys(FEEDBACK_TYPE_LABELS) as FeedbackType[]).map((t) => {
+            const Icon = FEEDBACK_TYPE_ICONS[t];
+            const active = type === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  active ? FEEDBACK_TYPE_STYLES[t] : "bg-white text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" /> {FEEDBACK_TYPE_LABELS[t]}
+              </button>
+            );
+          })}
+        </div>
+        <Textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={FEEDBACK_TYPE_PLACEHOLDERS[type]}
+          rows={3}
+        />
+        <div className="flex items-end gap-2 flex-wrap">
+          <div className="space-y-1.5 flex-1 min-w-[10rem]">
+            <Label htmlFor="fb-name" className="text-xs">Your name</Label>
+            <Input
+              id="fb-name"
+              value={submittedBy}
+              onChange={(e) => setSubmittedBy(e.target.value)}
+              placeholder="Jane Doe"
+              className="h-8 text-sm"
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            disabled={!message.trim() || !submittedBy.trim()}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            Submit
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FeedbackCard({
+  item,
+  isAdmin,
+  onReply,
+  onResolve,
+}: {
+  item: FeedbackItem;
+  isAdmin: boolean;
+  onReply: (id: string, reply: string) => void;
+  onResolve: (id: string) => void;
+}) {
+  const [replying, setReplying] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const Icon = FEEDBACK_TYPE_ICONS[item.type];
+
+  function handleSendReply() {
+    if (!replyText.trim()) return;
+    onReply(item.id, replyText.trim());
+    setReplyText("");
+    setReplying(false);
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-white p-4 space-y-2.5">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${FEEDBACK_TYPE_STYLES[item.type]}`}>
+          <Icon className="h-3 w-3" /> {FEEDBACK_TYPE_LABELS[item.type]}
+        </span>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${FEEDBACK_STATUS_STYLES[item.status]}`}>
+          {FEEDBACK_STATUS_LABELS[item.status]}
+        </span>
+      </div>
+      <p className="text-sm text-foreground leading-relaxed">{item.message}</p>
+      <p className="text-xs text-muted-foreground">
+        {item.submittedBy} ·{" "}
+        {new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+      </p>
+
+      {item.adminReply && (
+        <div className="ml-3 pl-3 border-l-2 border-primary/30 bg-primary/5 rounded-r-md py-2 px-3">
+          <p className="text-xs font-medium text-primary mb-0.5">Admin reply</p>
+          <p className="text-sm text-foreground">{item.adminReply}</p>
+        </div>
+      )}
+
+      {isAdmin && item.status !== "resolved" && (
+        <div className="pt-1">
+          {replying ? (
+            <div className="space-y-2">
+              <Textarea
+                autoFocus
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Write a reply…"
+                rows={2}
+                className="text-sm"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSendReply}
+                  disabled={!replyText.trim()}
+                  className="h-7 px-3 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  Send Reply
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setReplying(false); setReplyText(""); }}
+                  className="h-7 px-3 text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setReplying(true)} className="h-7 px-3 text-xs">
+                Reply
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onResolve(item.id)} className="h-7 px-3 text-xs gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Mark Resolved
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeedbackTab({
+  programId,
+  programName,
+  role,
+}: {
+  programId: string;
+  programName: string;
+  role: UserRole;
+}) {
+  const [items, setItems] = useState<FeedbackItem[]>(() =>
+    loadFeedback()
+      .filter((f) => f.programId === programId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  );
+
+  function refresh() {
+    setItems(
+      loadFeedback()
+        .filter((f) => f.programId === programId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    );
+  }
+
+  function handleSubmit(fields: { type: FeedbackType; message: string; submittedBy: string }) {
+    addFeedback({ programId, programName, ...fields });
+    refresh();
+    toast.success("Feedback submitted ✓");
+  }
+
+  function handleReply(id: string, reply: string) {
+    replyToFeedback(id, reply);
+    refresh();
+    toast.success("Reply sent ✓");
+  }
+
+  function handleResolve(id: string) {
+    resolveFeedback(id);
+    refresh();
+    toast.success("Marked resolved ✓");
+  }
+
+  return (
+    <div className="space-y-4">
+      <SubmitFeedbackForm onSubmit={handleSubmit} />
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">
+          No feedback yet for this program.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <FeedbackCard
+              key={item.id}
+              item={item}
+              isAdmin={role === "Admin"}
+              onReply={handleReply}
+              onResolve={handleResolve}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 
 export function ProgramDashboard() {
@@ -989,6 +1240,9 @@ export function ProgramDashboard() {
                 <TabsList>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="team-tasks">Team Tasks</TabsTrigger>
+                  <TabsTrigger value="feedback" className="gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" /> Feedback
+                  </TabsTrigger>
                 </TabsList>
                 {generatingDeadlines && (
                   <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -1087,6 +1341,10 @@ export function ProgramDashboard() {
 
               <TabsContent value="team-tasks" className="mt-4">
                 <TeamTasksTab tasks={allTasks} onUpdate={handleAnyTaskUpdate} />
+              </TabsContent>
+
+              <TabsContent value="feedback" className="mt-4">
+                <FeedbackTab programId={program.id} programName={program.name} role={role} />
               </TabsContent>
             </Tabs>
           </div>

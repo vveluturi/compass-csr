@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { Sparkles, TrendingUp, Heart, Users, FileText, Pin, PlusCircle, AlertTriangle, CalendarClock } from "lucide-react";
+import { Sparkles, TrendingUp, Heart, Users, FileText, Pin, PlusCircle, AlertTriangle, CalendarClock, MessageSquare } from "lucide-react";
 import { usePrograms } from "../context/programs-context";
 import { useWizard } from "../context/wizard-context";
 import { useNavigate } from "react-router";
@@ -20,6 +20,8 @@ import {
   effectiveDeadline,
   loadAllTaskStates,
 } from "../lib/tasks";
+import { useUnreadFeedbackCount } from "../lib/feedback";
+import { OnboardingModal } from "../components/onboarding-modal";
 import type { SavedProgram } from "../types/program";
 
 type UserRole = "Admin" | "Member";
@@ -40,9 +42,10 @@ const DIGEST_SENT_KEY = "compass_digest_sent_v1";
 const IMPACT_DOWNLOADED_KEY = "compass_impact_downloaded_v1";
 
 interface NextStepPrompt {
-  emoji: string;
+  icon?: React.ElementType;
+  emoji?: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   extraLine?: string;
   buttonText: string;
   buttonTo: string;
@@ -52,7 +55,19 @@ interface NextStepPrompt {
 // Walks the onboarding checklist in priority order and returns the first
 // unmet step — re-evaluated fresh on every render (no memoization) so each
 // prompt auto-dismisses the moment its underlying localStorage state changes.
-function getNextStepPrompt(programs: SavedProgram[]): NextStepPrompt | null {
+// Unread team feedback takes priority over the onboarding checklist below —
+// it's time-sensitive and independent of which onboarding stage the company
+// is at, so an Admin should see it first regardless.
+function getNextStepPrompt(programs: SavedProgram[], role: UserRole, unreadFeedback: number): NextStepPrompt | null {
+  if (role === "Admin" && unreadFeedback > 0) {
+    return {
+      icon: MessageSquare,
+      title: `You have ${unreadFeedback} unread feedback item${unreadFeedback !== 1 ? "s" : ""} from your team`,
+      buttonText: "View Inbox →",
+      buttonTo: "/team-inbox",
+    };
+  }
+
   if (programs.length === 0) return null;
 
   const teamMembers = loadTeamMembers();
@@ -151,7 +166,8 @@ export function Dashboard() {
     [programs],
   );
 
-  const nextStep = getNextStepPrompt(programs);
+  const unreadFeedback = useUnreadFeedbackCount();
+  const nextStep = getNextStepPrompt(programs, role, unreadFeedback);
 
   function handleNewProgram() {
     resetWizard();
@@ -181,6 +197,8 @@ export function Dashboard() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
+
+      <OnboardingModal isInvitedMember={role === "Member"} />
 
       {/* Overdue Tasks Banner */}
       {overdueTasks.length > 0 && (
@@ -246,10 +264,17 @@ export function Dashboard() {
         <div className="rounded-lg border-l-4 border-primary bg-primary/5 p-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">
-                {nextStep.emoji} {nextStep.title}
+              <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                {nextStep.icon ? (
+                  <nextStep.icon className="h-4 w-4 text-primary flex-shrink-0" />
+                ) : (
+                  nextStep.emoji
+                )}
+                {nextStep.title}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">{nextStep.subtitle}</p>
+              {nextStep.subtitle && (
+                <p className="text-xs text-muted-foreground mt-0.5">{nextStep.subtitle}</p>
+              )}
               {nextStep.extraLine && (
                 <p className="text-xs text-muted-foreground mt-0.5">{nextStep.extraLine}</p>
               )}
