@@ -2,7 +2,7 @@ Compass CSR is an AI-powered platform that empowers businesses to design, launch
 
 🌐 Live Demo: [compass-csr.vercel.app](https://compass-csr.vercel.app/)
 
-
+🎥 Demo Video (2.5 minutes) : https://youtu.be/JatrqwnD7cI
 
 Why I Built This:
 
